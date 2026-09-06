@@ -19,11 +19,6 @@ class ExportService {
   final Future<Directory> Function() _tempDir;
   final PhotoService? _photos;
 
-  static String _stamp(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-'
-      '${d.month.toString().padLeft(2, '0')}-'
-      '${d.day.toString().padLeft(2, '0')}';
-
   /// Every service event as one flattened CSV row joined with its
   /// item — the record a buyer or an insurance adjuster asks for.
   Future<File> shareServiceCsv({DateTime? now}) async {
@@ -58,13 +53,16 @@ class ExportService {
         ],
     ]);
 
-    final stamp = _stamp(now ?? DateTime.now());
-    final file =
-        File('${(await _tempDir()).path}/backforty-service-$stamp.csv');
-    await file.writeAsString(csv);
-    await _share.shareFile(file.path,
-        mimeType: 'text/csv', text: 'Back Forty service records ($stamp)');
-    return file;
+    return shareStampedFile(
+      share: _share,
+      tempDir: _tempDir,
+      baseName: 'backforty-service',
+      extension: 'csv',
+      mimeType: 'text/csv',
+      shareText: 'Back Forty service records',
+      text: csv,
+      now: now,
+    );
   }
 
   /// The full log as one zip: export JSON plus receipt photo files.
@@ -76,12 +74,15 @@ class ExportService {
           ? const {}
           : await _db.journal().collectMedia(store),
     );
-    final stamp = _stamp(now ?? DateTime.now());
-    final file =
-        File('${(await _tempDir()).path}/backforty-backup-$stamp.zip');
-    await file.writeAsBytes(bytes);
-    await _share.shareFile(file.path,
-        mimeType: 'application/zip', text: 'Back Forty backup ($stamp)');
-    return file;
+    return shareStampedFile(
+      share: _share,
+      tempDir: _tempDir,
+      baseName: 'backforty-backup',
+      extension: 'zip',
+      mimeType: 'application/zip',
+      shareText: 'Back Forty backup',
+      bytes: bytes,
+      now: now,
+    );
   }
 }

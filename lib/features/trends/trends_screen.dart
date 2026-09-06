@@ -1,7 +1,5 @@
-import 'dart:io';
 
 import 'package:cc_core/cc_core.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -196,48 +194,16 @@ class _TcoTable extends StatelessWidget {
   }
 }
 
-/// Pick a .zip backup, confirm the replace, restore. Available to free
-/// users — restoring your own records is never gated.
+/// The shared cc_core restore flow with Back Forty's words. Available
+/// to free users — restoring your own records is never gated.
 Future<void> restoreBackupFlow(BuildContext context, WidgetRef ref) async {
-  const typeGroup = XTypeGroup(label: 'Backup', extensions: ['zip']);
-  final picked = await openFile(acceptedTypeGroups: const [typeGroup]);
-  if (picked == null || !context.mounted) return;
-  final messenger = ScaffoldMessenger.of(context);
-
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Restore this backup?'),
-      content: const Text(
-          'The log on this phone is replaced with the backup — systems, '
-          'equipment, service history, intervals, and checklists. This '
-          'cannot be undone.'),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel')),
-        FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Restore')),
-      ],
-    ),
+  await runRestoreFlow(
+    context,
+    confirmBody: 'The log on this phone is replaced with the backup — '
+        'systems, equipment, service history, intervals, and checklists. '
+        'This cannot be undone.',
+    photoStore: ref.read(photoServiceProvider),
+    restore: (contents) => restoreFromExportData(
+        ref.read(databaseProvider), contents.exportData),
   );
-  if (confirmed != true) return;
-
-  try {
-    final contents = readBackupArchive(await File(picked.path).readAsBytes());
-    await restoreFromExportData(
-        ref.read(databaseProvider), contents.exportData);
-    // Photo files ride along in the archive; put them back in the store.
-    final store = ref.read(photoServiceProvider);
-    for (final entry in contents.media.entries) {
-      await store.importBytes(entry.key, entry.value);
-    }
-    messenger
-        .showSnackBar(const SnackBar(content: Text('Backup restored.')));
-  } on InvalidBackupException catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(e.message)));
-  } on Exception catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
-  }
 }

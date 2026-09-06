@@ -103,7 +103,7 @@ packages:
       path: "../CC_Core"
       relative: true
     source: path
-    version: "0.19.0"
+    version: "0.21.2"
   characters:
     dependency: transitive
     description:
