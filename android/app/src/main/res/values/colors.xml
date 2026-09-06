@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Adaptive-icon backdrop (referenced by mipmap-anydpi-v26) and
+         the splash, both the soil brown. -->
+    <color name="ic_launcher_background">#6B4F2A</color>
+    <color name="splash_background">#6B4F2A</color>
+</resources>
