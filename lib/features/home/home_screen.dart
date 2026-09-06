@@ -7,6 +7,7 @@ import '../../core/utils/labels.dart';
 import '../../data/database/app_database.dart';
 import '../intervals/whats_due_screen.dart';
 import '../monetization/monetization_providers.dart';
+import '../scan_import/notebook_flow.dart';
 import '../owners/owner_detail_screen.dart';
 
 /// The worst obligation hanging over one owner: overdue beats
@@ -48,9 +49,18 @@ class HomeScreen extends ConsumerWidget {
     }
     final empty = systems.isEmpty && equipment.isEmpty;
     return Scaffold(
-      appBar: AppBar(title: const Text('Back Forty')),
+      appBar: AppBar(
+        title: const Text('Back Forty'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Import service history',
+            onPressed: () => runNotebookImport(context, ref),
+          ),
+        ],
+      ),
       body: empty
-          ? _empty(context)
+          ? _empty(context, ref)
           : ListView(
               padding: const EdgeInsets.only(bottom: 88),
               children: [
@@ -118,7 +128,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _empty(BuildContext context) {
+  Widget _empty(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
@@ -140,6 +150,13 @@ class HomeScreen extends ConsumerWidget {
               style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            // The converter, front and center for notebook keepers.
+            FilledButton.tonalIcon(
+              onPressed: () => runNotebookImport(context, ref),
+              icon: const Icon(Icons.document_scanner_outlined),
+              label: const Text('Import my service history'),
             ),
           ],
         ),

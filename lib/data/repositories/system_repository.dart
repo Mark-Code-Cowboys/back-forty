@@ -40,6 +40,9 @@ class SystemRepository {
     return query.watch();
   }
 
+  /// One-shot list for the importers (matching by name).
+  Future<List<System>> getAll() => _db.select(_db.systems).get();
+
   Stream<System?> watchOne(int id) {
     final query = _db.select(_db.systems)..where((s) => s.id.equals(id));
     return query.watchSingleOrNull();

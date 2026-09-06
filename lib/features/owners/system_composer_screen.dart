@@ -6,6 +6,7 @@ import '../../core/utils/labels.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/system_repository.dart';
+import '../scan_import/nameplate_scan.dart';
 import 'specs_editor.dart';
 
 /// Add or edit a fixed system.
@@ -28,7 +29,24 @@ class _SystemComposerScreenState
   late SystemKind _kind = widget.existing?.kind ?? SystemKind.well;
   late DateTime? _installDate = widget.existing?.installDate;
   late Map<String, String> _specs = widget.existing?.specs ?? const {};
+  var _specsRevision = 0;
   var _saving = false;
+
+  /// Systems keep the whole plate in the spec sheet (no model/serial
+  /// columns) — confirmed reading merges in, still fully editable.
+  Future<void> _scanNameplate() async {
+    final reading = await scanNameplate(context, ref);
+    if (reading == null || !mounted) return;
+    setState(() {
+      _specs = {
+        ..._specs,
+        if (reading.model != null) 'MODEL': reading.model!,
+        if (reading.serial != null) 'SERIAL': reading.serial!,
+        ...reading.specs,
+      };
+      _specsRevision++;
+    });
+  }
 
   @override
   void dispose() {
@@ -66,6 +84,11 @@ class _SystemComposerScreenState
         title:
             Text(widget.existing == null ? 'Add a system' : 'Edit system'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.document_scanner_outlined),
+            tooltip: 'Scan nameplate',
+            onPressed: _scanNameplate,
+          ),
           TextButton(
               onPressed: _saving ? null : _save, child: const Text('Save')),
         ],
@@ -114,7 +137,9 @@ class _SystemComposerScreenState
           ),
           const SizedBox(height: 16),
           SpecsEditor(
-              initial: _specs, onChanged: (m) => _specs = m),
+              key: ValueKey(_specsRevision),
+              initial: _specs,
+              onChanged: (m) => _specs = m),
           const SizedBox(height: 16),
           TextField(
             controller: _notes,

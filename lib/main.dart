@@ -9,6 +9,7 @@ import 'app.dart';
 import 'data/database/app_database.dart';
 import 'data/providers.dart';
 import 'features/reminders/reminder_sync.dart';
+import 'features/scan_import/scan_import_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,10 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
+        documentScanServiceProvider
+            .overrideWithValue(MlKitDocumentScanService()),
+        textRecognitionServiceProvider
+            .overrideWithValue(MlKitTextRecognitionService()),
         photoServiceProvider.overrideWithValue(
             ImagePickerPhotoService(photosDir, filePrefix: 'photo')),
         reminderSchedulerProvider.overrideWithValue(

@@ -44,6 +44,9 @@ class EquipmentRepository {
     return query.watch();
   }
 
+  /// One-shot list for the importers (matching by name).
+  Future<List<EquipmentData>> getAll() => _db.select(_db.equipment).get();
+
   Stream<EquipmentData?> watchOne(int id) {
     final query = _db.select(_db.equipment)..where((e) => e.id.equals(id));
     return query.watchSingleOrNull();

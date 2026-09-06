@@ -7,6 +7,7 @@ import '../../core/utils/labels.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/service_event_repository.dart';
+import '../scan_import/receipt_scan.dart';
 
 /// Log or edit one thing done to one thing owned. Kind-aware: opening
 /// from a septic system preselects Pump-out, a mower Oil change —
@@ -57,6 +58,19 @@ class _ServiceEventComposerScreenState
     _parts.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  /// Fills date and cost from a scanned receipt — after the user
+  /// confirmed the reading, and still fully editable here.
+  Future<void> _scanReceipt() async {
+    final reading = await scanReceipt(context, ref);
+    if (reading == null || !mounted) return;
+    setState(() {
+      if (reading.costCents != null) {
+        _cost.text = (reading.costCents! / 100).toStringAsFixed(2);
+      }
+      if (reading.date != null) _date = reading.date!;
+    });
   }
 
   Future<void> _addPhoto() async {
@@ -133,6 +147,11 @@ class _ServiceEventComposerScreenState
         title:
             Text(widget.existing == null ? 'Log service' : 'Edit service'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            tooltip: 'Scan receipt',
+            onPressed: _scanReceipt,
+          ),
           TextButton(
               onPressed: _saving ? null : _save, child: const Text('Save')),
         ],
