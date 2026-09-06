@@ -2,6 +2,11 @@ import 'package:cc_core/cc_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'database/app_database.dart';
+import 'repositories/checklist_repository.dart';
+import 'repositories/equipment_repository.dart';
+import 'repositories/interval_repository.dart';
+import 'repositories/service_event_repository.dart';
+import 'repositories/system_repository.dart';
 
 /// Overridden in main() with the real on-device database, and in tests
 /// with an in-memory one.
@@ -23,4 +28,29 @@ final journalRepositoryProvider = Provider<AppJournalRepository>(
   (ref) => ref
       .watch(databaseProvider)
       .journal(photoStore: ref.watch(photoServiceProvider)),
+);
+
+final serviceEventRepositoryProvider = Provider<ServiceEventRepository>(
+  (ref) => ServiceEventRepository(ref.watch(databaseProvider),
+      journal: ref.watch(journalRepositoryProvider)),
+);
+
+final intervalRepositoryProvider = Provider<IntervalRepository>(
+  (ref) => IntervalRepository(ref.watch(databaseProvider)),
+);
+
+final systemRepositoryProvider = Provider<SystemRepository>(
+  (ref) => SystemRepository(ref.watch(databaseProvider),
+      events: ref.watch(serviceEventRepositoryProvider),
+      intervals: ref.watch(intervalRepositoryProvider)),
+);
+
+final equipmentRepositoryProvider = Provider<EquipmentRepository>(
+  (ref) => EquipmentRepository(ref.watch(databaseProvider),
+      events: ref.watch(serviceEventRepositoryProvider),
+      intervals: ref.watch(intervalRepositoryProvider)),
+);
+
+final checklistRepositoryProvider = Provider<ChecklistRepository>(
+  (ref) => ChecklistRepository(ref.watch(databaseProvider)),
 );

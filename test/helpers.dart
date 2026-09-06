@@ -11,6 +11,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:back_forty/core/theme/app_theme.dart';
 import 'package:back_forty/data/database/app_database.dart';
 import 'package:back_forty/data/providers.dart';
+import 'package:back_forty/data/repositories/equipment_repository.dart';
+import 'package:back_forty/data/repositories/service_event_repository.dart';
+import 'package:back_forty/data/repositories/system_repository.dart';
 
 AppDatabase makeTestDb() => AppDatabase(NativeDatabase.memory());
 
@@ -61,3 +64,38 @@ Future<void> disposeApp(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pump(const Duration(seconds: 1));
 }
+
+SystemDraft systemDraft({
+  String name = 'The Well',
+  SystemKind kind = SystemKind.well,
+  Map<String, String> specs = const {'GPM': '12', 'Depth': '180 ft'},
+  String? notes,
+}) =>
+    SystemDraft(name: name, kind: kind, specs: specs, notes: notes);
+
+EquipmentDraft equipmentDraft({
+  String name = 'The Snowblower',
+  EquipmentKind kind = EquipmentKind.snowblower,
+  int? year = 2021,
+  String? model = 'Ariens Deluxe 28',
+  Map<String, String> specs = const {},
+}) =>
+    EquipmentDraft(
+        name: name, kind: kind, year: year, model: model, specs: specs);
+
+ServiceEventDraft eventDraft({
+  DateTime? date,
+  ServiceKind kind = ServiceKind.oilChange,
+  int? costCents,
+  String? partsUsed,
+  String? notes,
+  List<JournalPhotoDraft> photos = const [],
+}) =>
+    ServiceEventDraft(
+      date: date ?? DateTime(2026, 9, 1),
+      kind: kind,
+      costCents: costCents,
+      partsUsed: partsUsed,
+      notes: notes,
+      photos: photos,
+    );
