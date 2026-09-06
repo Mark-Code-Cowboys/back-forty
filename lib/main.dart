@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'app.dart';
 import 'data/database/app_database.dart';
 import 'data/providers.dart';
+import 'features/reminders/reminder_sync.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,10 @@ Future<void> main() async {
         databaseProvider.overrideWithValue(db),
         photoServiceProvider.overrideWithValue(
             ImagePickerPhotoService(photosDir, filePrefix: 'photo')),
+        reminderSchedulerProvider.overrideWithValue(
+            LocalNotificationsScheduler(
+                channelId: 'backforty_reminders',
+                channelName: 'Service reminders')),
       ],
       child: const BackFortyApp(),
     ),

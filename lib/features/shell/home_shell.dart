@@ -1,8 +1,12 @@
+import 'package:cc_core/cc_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../home/home_screen.dart';
 import '../intervals/whats_due_screen.dart';
+import '../monetization/free_limit.dart';
+import '../monetization/monetization_providers.dart';
+import '../monetization/paywall_sheet.dart';
 import '../owners/equipment_composer_screen.dart';
 import '../owners/system_composer_screen.dart';
 
@@ -18,7 +22,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   static const _screens = [HomeScreen(), WhatsDueScreen()];
 
-  /// Phase C guards both adds behind their free-tier gates.
+  /// Both adds gate on LIVE counts (rig semantics — replacing the
+  /// mower or the well frees the slot); unlocking mid-flow continues
+  /// into the composer.
   Future<void> _add() async {
     final which = await showModalBottomSheet<Type>(
       context: context,
@@ -47,6 +53,21 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
     );
     if (which == null || !mounted) return;
+    final entitled =
+        await ref.read(entitlementServiceProvider).isUnlimited();
+    final isSystem = which == SystemComposerScreen;
+    final used = isSystem
+        ? (await ref.read(allSystemsProvider.future)).length
+        : (await ref.read(allEquipmentProvider.future)).length;
+    final limit = isSystem ? systemFreeLimit : equipmentFreeLimit;
+    try {
+      limit.guard(used: used, entitled: entitled);
+    } on FreeLimitReachedException {
+      if (!mounted) return;
+      final unlocked = await showPaywallSheet(context);
+      if (!unlocked) return;
+    }
+    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,

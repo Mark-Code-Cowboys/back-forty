@@ -6,7 +6,7 @@ import '../../core/utils/interval_math.dart';
 import '../../core/utils/labels.dart';
 import '../../data/database/app_database.dart';
 import '../intervals/whats_due_screen.dart';
-import '../monetization/free_limit.dart';
+import '../monetization/monetization_providers.dart';
 import '../owners/owner_detail_screen.dart';
 
 /// The worst obligation hanging over one owner: overdue beats
@@ -55,7 +55,7 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 88),
               children: [
                 _sectionHeader(context, 'Systems',
-                    systemFreeLimit.usage(systems.length).label),
+                    ref.watch(systemsUsageProvider)?.label),
                 for (final s in systems)
                   _OwnerTile(
                     name: s.name,
@@ -70,7 +70,7 @@ class HomeScreen extends ConsumerWidget {
                       'The well, the septic, the generator — add what the '
                       'house depends on.'),
                 _sectionHeader(context, 'Equipment',
-                    equipmentFreeLimit.usage(equipment.length).label),
+                    ref.watch(equipmentUsageProvider)?.label),
                 for (final e in equipment)
                   _OwnerTile(
                     name: e.name,
@@ -89,7 +89,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _sectionHeader(BuildContext context, String title, String chip) {
+  Widget _sectionHeader(BuildContext context, String title, String? chip) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
@@ -97,11 +97,12 @@ class HomeScreen extends ConsumerWidget {
         children: [
           Text(title, style: theme.textTheme.titleSmall),
           const Spacer(),
-          // Phase C hides these for Pro owners.
-          Chip(
-            label: Text(chip, style: theme.textTheme.labelSmall),
-            visualDensity: VisualDensity.compact,
-          ),
+          // Invisible for Pro owners (usage is null).
+          if (chip != null)
+            Chip(
+              label: Text(chip, style: theme.textTheme.labelSmall),
+              visualDensity: VisualDensity.compact,
+            ),
         ],
       ),
     );

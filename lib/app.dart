@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'features/shell/home_shell.dart';
 import 'features/onboarding/onboarding_screen.dart';
+import 'features/reminders/reminder_sync.dart';
 
 class BackFortyApp extends StatelessWidget {
   const BackFortyApp({super.key});
@@ -26,6 +27,8 @@ class AppRoot extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Side effect: reschedules reminders whenever the book changes.
+    ref.watch(reminderSyncProvider);
     final seen = ref.watch(firstRunSeenProvider).value;
     return switch (seen) {
       // One blank frame while the flag loads beats flashing onboarding

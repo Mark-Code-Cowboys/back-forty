@@ -12,6 +12,8 @@ import 'package:back_forty/core/theme/app_theme.dart';
 import 'package:back_forty/data/database/app_database.dart';
 import 'package:back_forty/data/providers.dart';
 import 'package:back_forty/data/repositories/equipment_repository.dart';
+import 'package:back_forty/features/monetization/monetization_providers.dart';
+import 'package:back_forty/features/reminders/reminder_sync.dart';
 import 'package:back_forty/data/repositories/service_event_repository.dart';
 import 'package:back_forty/data/repositories/system_repository.dart';
 
@@ -40,11 +42,11 @@ class FakeAppPhotoService implements PhotoService {
 }
 
 /// The app wired to an in-memory database and fake services.
-/// PHASE C adds the entitlement override here (see Hitch Post's
-/// helpers for the full shape).
 Widget testApp({
   required AppDatabase db,
   required Widget home,
+  EntitlementService? entitlements,
+  ReminderScheduler? scheduler,
   KeyValueStore? kvStore,
   List<Override> overrides = const [],
 }) =>
@@ -53,6 +55,10 @@ Widget testApp({
         databaseProvider.overrideWithValue(db),
         photoServiceProvider.overrideWithValue(FakeAppPhotoService()),
         kvStoreProvider.overrideWithValue(kvStore ?? InMemoryKeyValueStore()),
+        entitlementServiceProvider
+            .overrideWithValue(entitlements ?? FakeEntitlementService()),
+        reminderSchedulerProvider
+            .overrideWithValue(scheduler ?? FakeReminderScheduler()),
         ...overrides,
       ],
       child: MaterialApp(theme: AppTheme.light(), home: home),

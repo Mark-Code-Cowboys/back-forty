@@ -9,6 +9,9 @@ import '../../data/providers.dart';
 import '../../data/repositories/service_event_repository.dart';
 import '../checklists/checklist_screen.dart';
 import '../intervals/interval_editor.dart';
+import '../monetization/monetization_providers.dart';
+import '../monetization/paywall_sheet.dart';
+import '../reminders/reminder_sync.dart';
 import '../service/service_event_composer_screen.dart';
 import 'equipment_composer_screen.dart';
 import 'system_composer_screen.dart';
@@ -197,8 +200,9 @@ class OwnerDetailScreen extends ConsumerWidget {
                 TextButton.icon(
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Add interval'),
-                  onPressed: () => showIntervalEditor(context, ref,
-                      ownerType: ownerType, ownerId: ownerId),
+                  // Visible value: free users see the button and get
+                  // the pitch, not a hidden feature.
+                  onPressed: () => _addInterval(context, ref),
                 ),
               ],
             ),
@@ -243,6 +247,23 @@ class OwnerDetailScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Intervals (and the reminders they drive) are the paid tier;
+  /// existing ones stay visible and markable for everyone.
+  Future<void> _addInterval(BuildContext context, WidgetRef ref) async {
+    final entitled =
+        await ref.read(entitlementServiceProvider).isUnlimited();
+    if (!entitled) {
+      if (!context.mounted) return;
+      final unlocked = await showPaywallSheet(context);
+      if (!unlocked || !context.mounted) return;
+    }
+    if (!context.mounted) return;
+    await showIntervalEditor(context, ref,
+        ownerType: ownerType, ownerId: ownerId);
+    // First reminder needs the OS's blessing; idempotent afterward.
+    await ref.read(reminderSchedulerProvider).requestPermission();
   }
 
   void _openChecklist(BuildContext context, ChecklistSeason season) {
