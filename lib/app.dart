@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/home/home_screen.dart';
+import 'features/shell/home_shell.dart';
 import 'features/onboarding/onboarding_screen.dart';
 
 class BackFortyApp extends StatelessWidget {
@@ -32,7 +32,7 @@ class AppRoot extends ConsumerWidget {
       // at returning users.
       null => const Scaffold(body: SizedBox.shrink()),
       false => const OnboardingScreen(),
-      true => const HomeScreen(),
+      true => const HomeShell(),
     };
   }
 }

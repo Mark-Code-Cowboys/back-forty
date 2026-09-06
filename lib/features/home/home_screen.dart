@@ -1,100 +1,197 @@
-import 'package:cc_core/cc_core.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Interval;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// PLACEHOLDER DOMAIN — Phase A replaces this with the app's real
-/// Drift schema and repositories. It exists so the freshly scaffolded
-/// app demonstrates the house pattern end to end: a journal list, the
-/// cc_core FreeLimit counter, and the gate on add.
-final placeholderEntriesProvider =
-    NotifierProvider<PlaceholderEntries, List<String>>(
-        PlaceholderEntries.new);
+import '../../core/utils/dates.dart';
+import '../../core/utils/interval_math.dart';
+import '../../core/utils/labels.dart';
+import '../../data/database/app_database.dart';
+import '../intervals/whats_due_screen.dart';
+import '../monetization/free_limit.dart';
+import '../owners/owner_detail_screen.dart';
 
-class PlaceholderEntries extends Notifier<List<String>> {
-  @override
-  List<String> build() => const [];
-
-  void add() => state = [...state, 'Entry ${state.length + 1}'];
+/// The worst obligation hanging over one owner: overdue beats
+/// upcoming, sooner beats later, null when it owes nothing.
+({DateTime? due, bool overdue})? worstObligation(
+    List<Interval> intervals, OwnerType type, int ownerId,
+    {DateTime? now}) {
+  ({DateTime? due, bool overdue})? worst;
+  for (final i in intervals) {
+    if (i.ownerType != type || i.ownerId != ownerId) continue;
+    final candidate =
+        (due: intervalNextDue(i, now: now), overdue: intervalIsOverdue(i, now: now));
+    if (worst == null) {
+      worst = candidate;
+      continue;
+    }
+    if (candidate.overdue != worst.overdue) {
+      if (candidate.overdue) worst = candidate;
+      continue;
+    }
+    final cd = candidate.due, wd = worst.due;
+    if (cd == null || (wd != null && cd.isBefore(wd))) worst = candidate;
+  }
+  return worst;
 }
 
-/// The free tier this app will enforce for real in Phase C.
-const freeLimit = FreeLimit(5, 'entries');
-
+/// The property: systems and equipment, each with its next-due badge.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entries = ref.watch(placeholderEntriesProvider);
-    final theme = Theme.of(context);
-    final usage = freeLimit.usage(entries.length);
+    final systems = ref.watch(allSystemsProvider).value;
+    final equipment = ref.watch(allEquipmentProvider).value;
+    final intervals =
+        ref.watch(allIntervalsProvider).value ?? const <Interval>[];
+    if (systems == null || equipment == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final empty = systems.isEmpty && equipment.isEmpty;
     return Scaffold(
       appBar: AppBar(title: const Text('Back Forty')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          try {
-            freeLimit.guard(used: entries.length, entitled: false);
-            ref.read(placeholderEntriesProvider.notifier).add();
-          } on FreeLimitReachedException {
-            _showPaywallStub(context);
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add entry'),
-      ),
-      body: entries.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.menu_book_outlined,
-                        size: 64, color: theme.colorScheme.primary),
-                    const SizedBox(height: 16),
-                    Text('Back Forty scaffold is alive.',
-                        style: theme.textTheme.titleMedium,
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Phase A replaces this placeholder with the real '
-                      'domain. The add button demonstrates the free-tier '
-                      'gate at ${freeLimit.count}.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            )
+      body: empty
+          ? _empty(context)
           : ListView(
+              padding: const EdgeInsets.only(bottom: 88),
               children: [
-                // The house free-tier counter; Phase C hides it for
-                // entitled users (usage == null there).
-                FreeTierCounter(
-                  usage: usage,
-                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  onGoPro: () => _showPaywallStub(context),
-                ),
-                for (final entry in entries) ListTile(title: Text(entry)),
+                _sectionHeader(context, 'Systems',
+                    systemFreeLimit.usage(systems.length).label),
+                for (final s in systems)
+                  _OwnerTile(
+                    name: s.name,
+                    kind: systemKindLabel(s),
+                    ownerType: OwnerType.system,
+                    ownerId: s.id,
+                    badge: worstObligation(
+                        intervals, OwnerType.system, s.id),
+                  ),
+                if (systems.isEmpty)
+                  _sectionHint(context,
+                      'The well, the septic, the generator — add what the '
+                      'house depends on.'),
+                _sectionHeader(context, 'Equipment',
+                    equipmentFreeLimit.usage(equipment.length).label),
+                for (final e in equipment)
+                  _OwnerTile(
+                    name: e.name,
+                    kind: equipmentKindLabel(e),
+                    ownerType: OwnerType.equipment,
+                    ownerId: e.id,
+                    badge: worstObligation(
+                        intervals, OwnerType.equipment, e.id),
+                  ),
+                if (equipment.isEmpty)
+                  _sectionHint(context,
+                      'The boat, the snowblower, the mower — the seasonal '
+                      'fleet.'),
               ],
             ),
     );
   }
 
-  void _showPaywallStub(BuildContext context) {
-    showPaywallModal<void>(
-      context,
-      builder: (context) => PaywallSheetScaffold(
-        icon: Icons.star_rounded,
-        title: 'Back Forty Pro',
-        highlight: freeLimit.usage(freeLimit.count).label,
-        body: 'Phase C wires real products here via cc_core '
-            'StoreEntitlementService; this stub proves the sheet.',
-        primaryLabel: 'Buy (stub)',
-        onPrimary: () => Navigator.of(context).pop(),
-        onLater: () => Navigator.of(context).pop(),
+  Widget _sectionHeader(BuildContext context, String title, String chip) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+      child: Row(
+        children: [
+          Text(title, style: theme.textTheme.titleSmall),
+          const Spacer(),
+          // Phase C hides these for Pro owners.
+          Chip(
+            label: Text(chip, style: theme.textTheme.labelSmall),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHint(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Text(text,
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+    );
+  }
+
+  Widget _empty(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cabin_outlined,
+                size: 64, color: theme.colorScheme.primary),
+            const SizedBox(height: 16),
+            Text('Service records for everything on your land.',
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(
+              'Start with the thing you\'d least like to explain to a '
+              'repairman from memory — the well, the septic, the '
+              'generator.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OwnerTile extends StatelessWidget {
+  const _OwnerTile({
+    required this.name,
+    required this.kind,
+    required this.ownerType,
+    required this.ownerId,
+    this.badge,
+  });
+
+  final String name;
+  final String kind;
+  final OwnerType ownerType;
+  final int ownerId;
+  final ({DateTime? due, bool overdue})? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final b = badge;
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ListTile(
+        title: Text(name),
+        subtitle: Text(kind),
+        trailing: b == null
+            ? null
+            : Text(
+                b.overdue
+                    ? 'Overdue'
+                    : b.due == null
+                        ? ''
+                        : 'Due ${formatDate(b.due!)}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: b.overdue
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: b.overdue ? FontWeight.w600 : null,
+                ),
+              ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => OwnerDetailScreen(
+                ownerType: ownerType, ownerId: ownerId),
+          ),
+        ),
       ),
     );
   }
