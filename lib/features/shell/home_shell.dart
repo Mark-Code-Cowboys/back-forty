@@ -9,6 +9,7 @@ import '../monetization/monetization_providers.dart';
 import '../monetization/paywall_sheet.dart';
 import '../owners/equipment_composer_screen.dart';
 import '../owners/system_composer_screen.dart';
+import '../trends/trends_screen.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -20,7 +21,7 @@ class HomeShell extends ConsumerStatefulWidget {
 class _HomeShellState extends ConsumerState<HomeShell> {
   var _index = 0;
 
-  static const _screens = [HomeScreen(), WhatsDueScreen()];
+  static const _screens = [HomeScreen(), WhatsDueScreen(), TrendsScreen()];
 
   /// Both adds gate on LIVE counts (rig semantics — replacing the
   /// mower or the well frees the slot); unlocking mid-flow continues
@@ -98,6 +99,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           NavigationDestination(
               icon: Icon(Icons.pending_actions_outlined),
               label: "What's due"),
+          NavigationDestination(
+              icon: Icon(Icons.insights_outlined), label: 'Trends'),
         ],
       ),
     );
